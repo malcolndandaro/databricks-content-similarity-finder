@@ -1,0 +1,11 @@
+databricks:
+  cluster_id: "1234-567890-abcdefgh" # Cluster ID for local development (only needed if running outside Databricks)
+  finder_catalog:
+    name: "your_catalog_name" # Catalog where results will be stored (must be pre-created)
+    schema: "your_schema_name" # Schema where results will be stored (must be pre-created)
+    volume: "your_volume_name" # Volume where temporary data will be stored (must be pre-created)
+
+oracle:
+  host: "your-oracle-host.example.com" # Oracle database host
+  port: 1521 # Oracle database port
+  service_name: "YOUR_SERVICE_NAME" # Oracle service name

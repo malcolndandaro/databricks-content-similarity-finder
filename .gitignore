@@ -1,0 +1,12 @@
+.pycache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+.cursor/
+changes.md
+
+# Configuration files with sensitive data
+utils/config/config.yml

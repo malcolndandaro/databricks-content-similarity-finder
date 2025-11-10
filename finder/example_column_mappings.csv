@@ -1,0 +1,9 @@
+source_catalog,source_schema,source_table,source_column,target_catalog,target_schema,target_table,target_column,notes
+,BCP,oracle_table_b,ID,malcoln,bcp,oracle_table_b_subset_2,ID,Primary key mapping from Oracle BCP table
+,BCP,oracle_table_b,uuid,malcoln,bcp,oracle_table_b_subset_2,uuid,UUID field mapping
+,BCP,oracle_table_b,IP_ADDRESS,malcoln,bcp,oracle_table_b_subset_2,IP_ADDRESS,IP address field
+,BCP,oracle_table_b,NU_TLFN,malcoln,bcp,oracle_table_b_subset_2,NU_TLFN,Phone number field
+,BCP,oracle_table_b,nu_cep,malcoln,bcp,oracle_table_b_subset_2,nu_cep,Postal code field
+,BCP,oracle_table_b,client,malcoln,bcp,oracle_table_b_subset_2,client,Client identifier
+,BCP,oracle_table_b,no_imovel,malcoln,bcp,oracle_table_b_subset_2,no_imovel,Property number
+,BCP,oracle_table_b,event_timestamp,malcoln,bcp,oracle_table_b_subset_2,event_timestamp,Event timestamp field 
