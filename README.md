@@ -218,3 +218,206 @@ The choice of processing_mode can significantly impact performance:
 - `deltalake` mode provides the best performance for large datasets by leveraging Delta Lake's optimizations
 - `direct` mode might be slower but requires less storage space as it reads directly from Oracle
 - `memory` mode is fastest for small datasets but can cause out-of-memory errors with large data
+
+## Similarity Calculation Algorithms
+
+The tool uses different algorithms depending on the data type being compared. Below are ASCII diagrams showing how similarity scores are calculated for each type.
+
+### String Columns
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    STRING SIMILARITY                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Step 1: Extract Distinct Values                                │
+│  ┌──────────────┐              ┌──────────────┐                 │
+│  │ Source Col   │              │ Target Col   │                 │
+│  │ ["A","B","C"]│              │ ["B","C","D"]│                 │
+│  └──────────────┘              └──────────────┘                 │
+│                                                                  │
+│  Step 2: Calculate Jaccard Similarity                           │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Intersection = {B, C}           = 2 values        │         │
+│  │  Union = {A, B, C, D}            = 4 values        │         │
+│  │  Jaccard = Intersection / Union  = 2/4 = 0.50     │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 3: Calculate Containment Metrics                          │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Source in Target = Intersection / Source_Count    │         │
+│  │                   = 2/3 = 0.67                     │         │
+│  │                                                     │         │
+│  │  Target in Source = Intersection / Target_Count    │         │
+│  │                   = 2/3 = 0.67                     │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Final Score: overall = jaccard = 0.50                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Numeric Columns
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   NUMERIC SIMILARITY                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Step 1: Calculate Jaccard (Same as Strings)                    │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Source: [1, 2, 3, 4, 5]                           │         │
+│  │  Target: [3, 4, 5, 6, 7]                           │         │
+│  │  Intersection: {3, 4, 5} = 3                       │         │
+│  │  Union: {1,2,3,4,5,6,7} = 7                        │         │
+│  │  Jaccard = 3/7 = 0.43                              │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 2: Calculate Distribution Similarity                      │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  A) Range Overlap                                  │         │
+│  │     Source: min=1, max=5                           │         │
+│  │     Target: min=3, max=7                           │         │
+│  │     ───1═══════5───  (Source Range)                │         │
+│  │         ───3═══════7───  (Target Range)            │         │
+│  │         ───3═══5───  (Overlap = 2)                 │         │
+│  │     Total Range = 7-1 = 6                          │         │
+│  │     Range Similarity = 2/6 = 0.33                  │         │
+│  │                                                     │         │
+│  │  B) Mean Comparison                                │         │
+│  │     Source Mean = 3.0                              │         │
+│  │     Target Mean = 5.0                              │         │
+│  │     Mean Diff = 1 - |3-5|/max(3,5) = 0.60         │         │
+│  │                                                     │         │
+│  │  C) Standard Deviation Comparison                  │         │
+│  │     Source StdDev = 1.41                           │         │
+│  │     Target StdDev = 1.41                           │         │
+│  │     StdDev Diff = 1 - |1.41-1.41|/1.41 = 1.00     │         │
+│  │                                                     │         │
+│  │  Distribution = (0.33 + 0.60 + 1.00) / 3 = 0.64   │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 3: Combine Metrics                                        │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Overall = (Jaccard + Distribution) / 2            │         │
+│  │          = (0.43 + 0.64) / 2 = 0.54               │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Final Score: overall = 0.54                                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Date/Timestamp Columns
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                DATE/TIMESTAMP SIMILARITY                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Step 1: Normalize to Common Format                             │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  If types differ (Timestamp vs Date):              │         │
+│  │    - Normalize both to DATE (drops time component) │         │
+│  │  Else:                                              │         │
+│  │    - Use original format                            │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 2: Calculate Jaccard on Distinct Dates                    │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Source: [2024-01-01, 2024-01-02, 2024-01-03]     │         │
+│  │  Target: [2024-01-02, 2024-01-03, 2024-01-04]     │         │
+│  │  Intersection = 2, Union = 4                       │         │
+│  │  Jaccard = 0.50                                    │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 3: Calculate Temporal Range Overlap                       │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Convert to Unix timestamps (epoch)                │         │
+│  │  Source: min=1704067200, max=1704240000           │         │
+│  │  Target: min=1704153600, max=1704326400           │         │
+│  │                                                     │         │
+│  │  Timeline:                                          │         │
+│  │  ───[Source─────────]─── (3 days)                 │         │
+│  │       ───[Target─────────]─── (3 days)            │         │
+│  │       ───[Overlap───]─── (2 days)                 │         │
+│  │                                                     │         │
+│  │  Source Range = 1704240000 - 1704067200 = 172800  │         │
+│  │  Target Range = 1704326400 - 1704153600 = 172800  │         │
+│  │  Overlap Range = 1704240000 - 1704153600 = 86400  │         │
+│  │  Max Range = 1704326400 - 1704067200 = 259200     │         │
+│  │                                                     │         │
+│  │  Temporal Overlap = 86400 / 259200 = 0.33         │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 4: Weighted Combination                                   │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Overall = (Temporal_Overlap × 0.7) +              │         │
+│  │            (Jaccard × 0.3)                         │         │
+│  │          = (0.33 × 0.7) + (0.50 × 0.3)            │         │
+│  │          = 0.23 + 0.15 = 0.38                      │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Final Score: overall = 0.38                                    │
+│  (70% weight on temporal range, 30% on exact matches)           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Type Mismatches (Non-Temporal)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│            MIXED TYPE SIMILARITY (Non-Temporal)                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Example: Number column vs String column                        │
+│                                                                  │
+│  Step 1: Cast Both to String                                    │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Source (Number): [1, 2, 3]                        │         │
+│  │  Target (String): ["1", "2", "4"]                  │         │
+│  │                                                     │         │
+│  │  After casting:                                     │         │
+│  │  Source: ["1", "2", "3"]                            │         │
+│  │  Target: ["1", "2", "4"]                            │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 2: Calculate Jaccard on String Values                     │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Intersection = {"1", "2"} = 2                     │         │
+│  │  Union = {"1", "2", "3", "4"} = 4                  │         │
+│  │  Jaccard = 2/4 = 0.50                              │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Step 3: Calculate Containment                                  │
+│  ┌────────────────────────────────────────────────────┐         │
+│  │  Source in Target = 2/3 = 0.67                     │         │
+│  │  Target in Source = 2/3 = 0.67                     │         │
+│  └────────────────────────────────────────────────────┘         │
+│                                                                  │
+│  Final Score: overall = jaccard = 0.50                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Metrics Explained
+
+- **Jaccard Similarity**: Measures overlap between distinct values
+  - Formula: `|Intersection| / |Union|`
+  - Range: 0.0 (no overlap) to 1.0 (identical sets)
+
+- **Containment Metrics**:
+  - `source_in_target`: What % of source values exist in target
+  - `target_in_source`: What % of target values exist in source
+  - Used to determine subset/superset relationships
+
+- **Distribution Similarity** (Numeric only):
+  - Range overlap: How much do the min-max ranges overlap?
+  - Mean comparison: How similar are the average values?
+  - StdDev comparison: How similar is the spread of values?
+
+- **Temporal Range Overlap** (Dates/Timestamps):
+  - Calculates what % of the time range overlaps
+  - Weighted 70% (range) + 30% (exact date matches)
+  - Better for comparing temporal datasets that may have shifted time periods
