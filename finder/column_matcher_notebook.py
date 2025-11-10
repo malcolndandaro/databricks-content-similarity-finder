@@ -1,39 +1,44 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Table Relationship Finder
+# MAGIC # Table Similarity Finder
 # MAGIC 
-# MAGIC This tool finds relationships between tables by analyzing actual data content rather than just metadata.
-# MAGIC Useful for data migrations where tables have been renamed or restructured.
+# MAGIC A tool for discovering relationships between tables by comparing **actual data content**, not just metadata.  
+# MAGIC Useful for **data migrations** where tables may have been **renamed, split, or restructured**.
 # MAGIC 
-# MAGIC ## How it works
-# MAGIC 1. Load predefined column mappings from CSV (optional but recommended for performance)
-# MAGIC 2. Compare data content between source and target tables
-# MAGIC 3. Calculate similarity scores for matching columns
-# MAGIC 4. Generate relationship analysis report
+# MAGIC ---
+# MAGIC 
+# MAGIC ## How It Works
+# MAGIC 
+# MAGIC 1. Compares data content between **source** and **target** tables  
+# MAGIC 2. Calculates **similarity scores** for matching columns  
+# MAGIC 3. Generates a **relationship analysis report** summarizing detected mappings
+# MAGIC 
+# MAGIC ---
 # MAGIC 
 # MAGIC ## How to Run
-# MAGIC 1. Upload the .csv with the column mapping
-# MAGIC 2. Change the configuration options in cell 2
-# MAGIC 3. Run all cells below
 # MAGIC 
+# MAGIC 1. (Optional) Upload a `.csv` file containing predefined column mappings  
+# MAGIC 2. Update configuration options in **cell 2**  
+# MAGIC 3. Run all subsequent cells to start the analysis
 # MAGIC 
-# MAGIC ##### CSV Mapping File Format
+# MAGIC ---
 # MAGIC 
-# MAGIC The CSV file should have these 8 columns:
-# MAGIC - source_catalog, source_schema, source_table, source_column
-# MAGIC - target_catalog, target_schema, target_table, target_column
+# MAGIC ## (Optional) CSV Mapping File Format
 # MAGIC 
-# MAGIC (source_catalog ca be empty as Oracle does not have a "catalog" level like Databricks)
+# MAGIC The mapping CSV should include the following **8 columns**:
 # MAGIC 
-# MAGIC Example:
-# MAGIC ```
+# MAGIC | source_catalog | source_schema | source_table | source_column | target_catalog | target_schema | target_table | target_column |
+# MAGIC |----------------|----------------|---------------|----------------|----------------|----------------|---------------|----------------|
+# MAGIC 
+# MAGIC **Notes:**
+# MAGIC - `source_catalog` can be left empty since Oracle does not have a catalog level (unlike Databricks).
+# MAGIC 
+# MAGIC **Example:**
+# MAGIC ```csv
 # MAGIC source_catalog,source_schema,source_table,source_column,target_catalog,target_schema,target_table,target_column
 # MAGIC ,BCP,oracle_table_b,ID,malcoln,bcp,oracle_table_b_subset_2,ID
 # MAGIC ```
-
-# COMMAND ----------
-
-
+# MAGIC 
 
 # COMMAND ----------
 
@@ -91,8 +96,6 @@ logger = get_finder_logger(level="INFO", include_debug=True)
 print(f"Mapping file: {mapping_file_path}")
 with open(mapping_file_path, 'r') as f:
     print(f.read())
-# MAGIC %md
-# MAGIC ## Run Analysis
 
 # COMMAND ----------
 
