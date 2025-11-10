@@ -1,19 +1,28 @@
-# Databricks Data Migration Finder
+# Databricks Data Similarity Finder
 
-A tool for identifying table relationships by data content during data warehouse migrations to Databricks.
+A tool for identifying tables with matching data content by analyzing actual column values rather than relying on metadata or schema information.
 
 ## Overview
-This module helps identify similarities between tables based on actual data content rather than metadata. It's particularly useful when:
-- Tables have been migrated from Oracle to Databricks with changed modeling logic
+
+This tool helps you discover which Databricks tables contain the same data as your source tables (typically from Oracle). It's designed for data migration scenarios where:
+- Tables have been migrated with different schemas or column names
 - One source table has been split into multiple target tables
-- Multiple source tables have been combined into one target table
-- You need to find table relationships by analyzing the actual data content
+- Multiple source tables have been combined into a single target table
+- You need to verify that migrated data matches the original source
+
+The tool compares actual data values between tables and identifies:
+- **Exact matches**: Tables containing identical data
+- **Subsets**: Target tables that contain a subset of the source table's columns/data
+- **Supersets**: Target tables that contain all source data plus additional columns/data
+- **Partial overlaps**: Tables with some matching columns and data
 
 ## Features
-- Identifies table relationships by analyzing data content
+
+- Finds tables with matching data content by comparing column values
+- Identifies tables that are subsets or supersets of source tables
 - Supports comparison between Oracle and Databricks tables
-- Handles large tables efficiently through sampling
-- Provides detailed similarity metrics and reports
+- Handles large tables efficiently through intelligent sampling
+- Provides detailed similarity metrics for each column comparison
 - Support for different output modes:
   - `deltalake`: Save results as Delta tables (default)
   - `text`: Print results to logs without saving to disk
@@ -191,11 +200,12 @@ When column mappings are provided:
 3. Run the notebook
 
 ## Example Output
-The analysis will provide detailed metrics including:
-- Column-level similarity scores
-- Table relationship type (subset, superset, etc.)
-- Content overlap percentages
-- Value distribution comparisons
+
+The analysis provides detailed metrics including:
+- **Column-level similarity scores**: Percentage match for each column pair
+- **Table classification**: Whether the target is a subset, superset, or partial match of the source
+- **Content overlap percentages**: How much of the source data exists in the target (and vice versa)
+- **Value distribution comparisons**: Statistical analysis for numeric columns
 
 Results will be saved according to the chosen output mode:
 - `deltalake`: Saved as Delta tables in the specified volume
@@ -410,7 +420,7 @@ The tool uses different algorithms depending on the data type being compared. Be
 - **Containment Metrics**:
   - `source_in_target`: What % of source values exist in target
   - `target_in_source`: What % of target values exist in source
-  - Used to determine subset/superset relationships
+  - Used to identify if a table is a subset or superset of another
 
 - **Distribution Similarity** (Numeric only):
   - Range overlap: How much do the min-max ranges overlap?
